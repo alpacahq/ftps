@@ -19,8 +19,8 @@ import (
 )
 
 type SocksInfo struct {
-	socksHost string
-	socksPort int
+	SocksHost string
+	SocksPort int
 }
 
 type FTPS struct {
@@ -44,7 +44,7 @@ func (ftps *FTPS) Connect(host string, port int) (err error) {
 
 func getConnection(host string, port int, socksInfo *SocksInfo) (net.Conn, error) {
 	if socksInfo != nil {
-		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%d", socksInfo.socksHost, socksInfo.socksPort), nil, proxy.Direct)
+		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%d", socksInfo.SocksHost, socksInfo.SocksPort), nil, proxy.Direct)
 		if err != nil {
 			return nil, err
 		}
