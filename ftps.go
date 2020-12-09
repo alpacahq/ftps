@@ -14,23 +14,48 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
+
+type SocksInfo struct {
+	SocksHost string
+	SocksPort int
+}
 
 type FTPS struct {
 	host string
 
-	conn net.Conn
-	text *textproto.Conn
+	conn  net.Conn
+	text  *textproto.Conn
+	socks *SocksInfo
 
 	Debug     bool
 	TLSConfig tls.Config
 }
 
+func (ftps *FTPS) ConnectSocks(host string, port int, socksProxy SocksInfo) (err error) {
+	ftps.socks = &socksProxy
+	return ftps.connect(host, port, true)
+}
 func (ftps *FTPS) Connect(host string, port int) (err error) {
+	return ftps.connect(host, port, false)
+}
 
+func getConnection(host string, port int, socksInfo *SocksInfo) (net.Conn, error) {
+	if socksInfo != nil {
+		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%d", socksInfo.SocksHost, socksInfo.SocksPort), nil, proxy.Direct)
+		if err != nil {
+			return nil, err
+		}
+		return dialer.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+	}
+	return net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+}
+
+func (ftps *FTPS) connect(host string, port int, socks5 bool) (err error) {
 	ftps.host = host
-
-	ftps.conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+	ftps.conn, err = getConnection(host, port, ftps.socks)
 	if err != nil {
 		return err
 	}
@@ -399,7 +424,8 @@ func (ftps *FTPS) Quit() (err error) {
 
 func (ftps *FTPS) openDataConn(port int) (dataConn net.Conn, err error) {
 
-	dataConn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", ftps.host, port))
+	// dataConn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", ftps.host, port))
+	dataConn, err = getConnection(ftps.host, port, ftps.socks)
 	if err != nil {
 		return
 	}
